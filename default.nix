@@ -2,126 +2,9 @@
   pkgs,
   ...
 }@args:
-
-let
-  pullHelmChartFromGit =
-    {
-      name,
-      repo,
-      rev,
-      path ? "",
-      hash ? pkgs.lib.fakeHash,
-      ...
-    }:
-    pkgs.fetchgit {
-      name = "helm-chart-${name}-${rev}";
-      url = repo;
-      rev = rev;
-      hash = hash;
-      sparseCheckout = [ path ];
-      postFetch = ''
-        mv $out/${path}/* $out
-      '';
-    };
-
-  pullHelmChartFromRepo =
-    {
-      name,
-      repo,
-      version,
-      hash ? pkgs.lib.fakeHash,
-      ...
-    }:
-    pkgs.stdenv.mkDerivation {
-      name = "helm-chart-${name}-${version}";
-      nativeBuildInputs = [ pkgs.cacert ];
-
-      phases = [ "installPhase" ];
-      installPhase = ''
-        export HELM_CACHE_HOME="$TMP/.helm"
-        ${pkgs.kubernetes-helm}/bin/helm pull \
-        --version "${version}" --repo "${repo}" \
-        --untar --untardir $out \
-        "${name}"
-        mv $out/${name}/* $out
-        rm -r $out/*gz
-      '';
-      outputHashMode = "recursive";
-      outputHashAlgo = "sha256";
-      outputHash = hash;
-    };
-
-  pullHelmChart =
-    value:
-    if builtins.hasAttr "rev" value then
-      pullHelmChartFromGit value
-    else if builtins.hasAttr "repo" value then
-      pullHelmChartFromRepo value
-    else
-      null;
-
-  buildHelmChart =
-    {
-      name,
-      chart,
-      helmValues,
-      namespace ? name,
-      extraManifests ? [ ],
-      ...
-    }:
-    pkgs.stdenv.mkDerivation {
-      name = name;
-      manifests = builtins.toJSON extraManifests;
-      values = builtins.toJSON helmValues;
-      passAsFile = [
-        "values"
-        "manifests"
-      ];
-
-      phases = [ "installPhase" ];
-      installPhase = ''
-        export HELM_CACHE_HOME="$TMP/.helm"
-
-        ${pkgs.kubernetes-helm}/bin/helm template \
-        --namespace "${namespace}" --create-namespace \
-        --include-crds --values "$valuesPath" \
-        "${name}" "${chart}" > $out
-
-        # Append extra manifests as additional YAML documents if any
-        if ${if (builtins.length extraManifests) > 0 then "true" else "false"}; then
-          echo "---" >> $out
-          ${pkgs.yq-go}/bin/yq -oy -P ".[] | split_doc" $manifestsPath >> $out
-        fi
-      '';
-    };
-
-  buildManifestsOnly =
-    {
-      name,
-      namespace ? name,
-      extraManifests,
-      ...
-    }:
-    pkgs.stdenv.mkDerivation {
-      name = name;
-      manifests = builtins.toJSON extraManifests;
-      passAsFile = [ "manifests" ];
-      phases = [ "installPhase" ];
-      installPhase = ''
-        ${pkgs.yq-go}/bin/yq -oy -P ".[] | split_doc" $manifestsPath > $out
-      '';
-    };
-
-  buildManifests =
-    value:
-    if value.chart != null then
-      buildHelmChart value
-    else if builtins.hasAttr "extraManifests" value then
-      buildManifestsOnly value
-    else
-      null;
-in
 rec {
+  # Import Kubernetes/Helm/Nix helpers:
+  kubelib = import ./lib { inherit pkgs; };
 
   # Load configuration of our Kubernetes applications:
   conf = {
@@ -140,11 +23,11 @@ rec {
   };
 
   # Get chart as Nix derivations:
-  charts = builtins.mapAttrs (name: value: pullHelmChart value) conf;
+  charts = builtins.mapAttrs (name: value: kubelib.pullHelmChart value) conf;
 
   # Get generated manifests as Nix derivations:
   manifests = builtins.mapAttrs (
-    name: value: buildManifests (value // { chart = (builtins.getAttr name charts); })
+    name: value: kubelib.buildManifests (value // { chart = (builtins.getAttr name charts); })
   ) conf;
 
 }
