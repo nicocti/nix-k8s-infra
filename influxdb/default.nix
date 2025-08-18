@@ -5,6 +5,8 @@
 rec {
   namespace = "influxdb";
   name = "influxdb";
+  version = "3.3";
+
   extraManifests = [
     {
       apiVersion = "apps/v1";
