@@ -6,30 +6,37 @@ rec {
       repo,
       rev,
       path ? "",
+      patches ? [ ],
       hash ? pkgs.lib.fakeHash,
       ...
     }:
-    pkgs.fetchgit {
+    pkgs.stdenv.mkDerivation {
       name = "helm-chart-${name}-${rev}";
-      url = repo;
-      rev = rev;
-      hash = hash;
-      sparseCheckout = [ path ];
-      postFetch = ''
-        mv $out/${path}/* $out
+      phases = [ "unpackPhase" "patchPhase" "installPhase" ];
+      src = pkgs.fetchgit {
+        name = "helm-chart-sources-${name}-${rev}";
+        url = repo;
+        rev = rev;
+        hash = hash;
+        sparseCheckout = [ path ];
+      };
+      patches = patches;
+      installPhase = ''
+        mkdir -p $out
+        mv ${path}/* $out
       '';
     };
 
   pullHelmChartFromRepo =
     {
-      name,
+      chart,
       repo,
       version,
       hash ? pkgs.lib.fakeHash,
       ...
     }:
     pkgs.stdenv.mkDerivation {
-      name = "helm-chart-${name}-${version}";
+      name = "helm-chart-${chart}-${version}";
       nativeBuildInputs = [ pkgs.cacert ];
 
       phases = [ "installPhase" ];
@@ -37,9 +44,8 @@ rec {
         export HELM_CACHE_HOME="$TMP/.helm"
         ${pkgs.kubernetes-helm}/bin/helm pull \
         --version "${version}" --repo "${repo}" \
-        --untar --untardir $out \
-        "${name}"
-        mv $out/${name}/* $out
+        --untar --untardir $out "${chart}"
+        mv $out/${chart}/* $out
         rm -r $out/*gz
       '';
       outputHashMode = "recursive";
@@ -61,7 +67,7 @@ rec {
       name,
       chart,
       helmValues,
-      namespace ? name,
+      namespace,
       extraManifests ? [ ],
       ...
     }:
@@ -77,7 +83,6 @@ rec {
       phases = [ "installPhase" ];
       installPhase = ''
         export HELM_CACHE_HOME="$TMP/.helm"
-
         ${pkgs.kubernetes-helm}/bin/helm template \
         --namespace "${namespace}" --create-namespace \
         --include-crds --values "$valuesPath" \

@@ -1,14 +1,15 @@
 {
-  domain,
+  config,
 }:
 {
   name = "garage";
   namespace = "garage";
   repo = "https://git.deuxfleurs.fr/Deuxfleurs/garage.git";
-  rev = "refs/tags/v1.2.0";
+  rev = "refs/tags/v1.3.0";
   path = "script/helm/garage";
-  hash = "sha256-lstBIYXzlIl9If2l6deNmhN3/QjmOpnu7zvQbsW1XdU=";
-  version = "1.2.0";
+  hash = "sha256-fm19kthiZuL9hfAR52xxWrkqnDHe8cRjn2LJsCibd+w=";
+  patches = [ ./patches/add-namespace.patch ];
+  version = "1.3.0";
 
   helmValues = {
     garage = {
@@ -33,7 +34,7 @@
           enabled = true;
           hosts = [
             {
-              host = "s3.${domain}";
+              host = "s3.${config.domain}";
               paths = [
                 {
                   path = "/";
@@ -42,7 +43,7 @@
               ];
             }
           ];
-          tls = [ { hosts = [ "s3.${domain}" ]; } ];
+          tls = [ { hosts = [ "s3.${config.domain}" ]; } ];
         };
       };
     };

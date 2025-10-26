@@ -1,0 +1,84 @@
+diff --git a/script/helm/garage/templates/configmap.yaml b/script/helm/garage/templates/configmap.yaml
+index ab5b84db..a2dbd6f2 100644
+--- a/script/helm/garage/templates/configmap.yaml
++++ b/script/helm/garage/templates/configmap.yaml
+@@ -3,6 +3,7 @@ apiVersion: v1
+ kind: ConfigMap
+ metadata:
+   name: {{ include "garage.fullname" . }}-config
++  namespace: {{ .Release.Namespace }}
+ data:
+   garage.toml: |-
+     {{- if .Values.garage.garageTomlString }}
+diff --git a/script/helm/garage/templates/ingress.yaml b/script/helm/garage/templates/ingress.yaml
+index 35225daa..8875d85a 100644
+--- a/script/helm/garage/templates/ingress.yaml
++++ b/script/helm/garage/templates/ingress.yaml
+@@ -16,6 +16,7 @@ apiVersion: extensions/v1beta1
+ kind: Ingress
+ metadata:
+   name: {{ $fullName }}-s3-api
++  namespace: {{ .Release.Namespace }}
+   labels:
+     {{- include "garage.labels" . | nindent 4 }}
+     {{- with .Values.ingress.s3.api.labels }}
+diff --git a/script/helm/garage/templates/secret.yaml b/script/helm/garage/templates/secret.yaml
+index 54749424..b587134a 100644
+--- a/script/helm/garage/templates/secret.yaml
++++ b/script/helm/garage/templates/secret.yaml
+@@ -2,6 +2,7 @@ apiVersion: v1
+ kind: Secret
+ metadata:
+   name: {{ include "garage.rpcSecretName" . }}
++  namespace: {{ .Release.Namespace }}
+   labels:
+     {{- include "garage.labels" . | nindent 4 }}
+ type: Opaque
+diff --git a/script/helm/garage/templates/service-headless.yaml b/script/helm/garage/templates/service-headless.yaml
+index 7bc9f2cc..32c580fe 100644
+--- a/script/helm/garage/templates/service-headless.yaml
++++ b/script/helm/garage/templates/service-headless.yaml
+@@ -3,6 +3,7 @@ apiVersion: v1
+ kind: Service
+ metadata:
+   name: {{ include "garage.fullname" . }}-headless
++  namespace: {{ .Release.Namespace }}
+   labels:
+     {{- include "garage.labels" . | nindent 4 }}
+ spec:
+diff --git a/script/helm/garage/templates/service.yaml b/script/helm/garage/templates/service.yaml
+index 37218872..e0360cfa 100644
+--- a/script/helm/garage/templates/service.yaml
++++ b/script/helm/garage/templates/service.yaml
+@@ -2,6 +2,7 @@ apiVersion: v1
+ kind: Service
+ metadata:
+   name: {{ include "garage.fullname" . }}
++  namespace: {{ .Release.Namespace }}
+   labels:
+     {{- include "garage.labels" . | nindent 4 }}
+ spec:
+diff --git a/script/helm/garage/templates/serviceaccount.yaml b/script/helm/garage/templates/serviceaccount.yaml
+index a0a89a33..5da56f6b 100644
+--- a/script/helm/garage/templates/serviceaccount.yaml
++++ b/script/helm/garage/templates/serviceaccount.yaml
+@@ -3,6 +3,7 @@ apiVersion: v1
+ kind: ServiceAccount
+ metadata:
+   name: {{ include "garage.serviceAccountName" . }}
++  namespace: {{ .Release.Namespace }}
+   labels:
+     {{- include "garage.labels" . | nindent 4 }}
+   {{- with .Values.serviceAccount.annotations }}
+diff --git a/script/helm/garage/templates/workload.yaml b/script/helm/garage/templates/workload.yaml
+index d144cb41..829d839f 100644
+--- a/script/helm/garage/templates/workload.yaml
++++ b/script/helm/garage/templates/workload.yaml
+@@ -2,6 +2,7 @@ apiVersion: apps/v1
+ kind: {{ .Values.deployment.kind }}
+ metadata:
+   name: {{ include "garage.fullname" . }}
++  namespace: {{ .Release.Namespace }}
+   labels:
+     {{- include "garage.labels" . | nindent 4 }}
+ spec:

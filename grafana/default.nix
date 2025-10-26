@@ -1,12 +1,13 @@
 {
-  domain,
+  config,
 }:
 {
   name = "grafana";
+  chart = "grafana";
   namespace = "grafana";
   repo = "https://grafana.github.io/helm-charts/";
-  version = "9.3.2";
-  hash = "sha256-WdJLZSSkdqvjiACwHrmFU/1ylxINLd0ghHa8mM6SLqQ=";
+  version = "10.1.2";
+  hash = "sha256-++ZBsLLr2ICie6qs0YfBHYLbO/BWuUn3Cws3JZRv6hU=";
 
   helmValues = {
     replicas = 1;
@@ -14,8 +15,8 @@
     createConfigmap = true;
     ingress = {
       enabled = true;
-      hosts = [ "grafana.${domain}" ];
-      tls = [ { hosts = [ "grafana.${domain}" ]; } ];
+      hosts = [ "grafana.${config.domain}" ];
+      tls = [ { hosts = [ "grafana.${config.domain}" ]; } ];
     };
     persistence = {
       enabled = false;
@@ -60,6 +61,9 @@
     };
     sidecar = {
       logLevel = "WARN";
+    };
+    testFramework = {
+      enabled = false;
     };
   };
 }

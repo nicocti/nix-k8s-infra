@@ -1,16 +1,13 @@
 {
-  domain,
-  rproxyIp,
-  k8sApiAddr,
-  ipPoolStart,
-  ipPoolStop,
+  config,
 }:
 {
   name = "cilium";
+  chart = "cilium";
   namespace = "cilium";
   repo = "https://helm.cilium.io/";
-  version = "1.18.0";
-  hash = "sha256-1EJrkcqf1Ow/3aHT3ET02dOVcjDKQRjRAIpGearOUmI=";
+  version = "1.18.3";
+  hash = "sha256-wMKbd2SR2+5LKBEPtm4vHJRkGwyzNEprjEG5QZD9s5E=";
 
   helmValues = {
     ingressController = {
@@ -21,7 +18,7 @@
       defaultSecretName = "default-cert";
       service = {
         annotations = {
-          "io.cilium/lb-ipam-ips" = "${rproxyIp}";
+          "io.cilium/lb-ipam-ips" = "${config.cilium.rproxyIp}";
         };
       };
     };
@@ -52,13 +49,13 @@
           annotations = { };
           className = "cilium";
           enabled = true;
-          hosts = [ "hubble.${domain}" ];
+          hosts = [ "hubble.${config.domain}" ];
           labels = { };
-          tls = [ { hosts = [ "hubble.${domain}" ]; } ];
+          tls = [ { hosts = [ "hubble.${config.domain}" ]; } ];
         };
       };
     };
-    k8sServiceHost = "${k8sApiAddr}";
+    k8sServiceHost = "${config.cilium.k8sApiAddr}";
     k8sServicePort = 6443;
     k8sClientRateLimit = {
       qps = 30;
@@ -82,8 +79,8 @@
       spec = {
         blocks = [
           {
-            start = "${ipPoolStart}";
-            stop = "${ipPoolStop}";
+            start = "${config.cilium.ipPoolStart}";
+            stop = "${config.cilium.ipPoolStop}";
           }
         ];
       };

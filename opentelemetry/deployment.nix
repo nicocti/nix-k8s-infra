@@ -1,9 +1,12 @@
 { }:
 {
   name = "opentelemetry-deployment";
-  namespace = "opentelemetry";
-  chart = "open-telemetry/opentelemetry-collector";
+  chart = "opentelemetry-collector";
+  namespace = "otel";
+  repo = "https://open-telemetry.github.io/opentelemetry-helm-charts";
+  hash = "sha256-Tq49zjTKEIvm28F/7b8Y3cGX7/J9/fJjJdN+i21FNVk=";
   version = "0.129.0";
+
   helmValues = {
     mode = "deployment";
     image = {

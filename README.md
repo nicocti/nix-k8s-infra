@@ -13,7 +13,7 @@ This project comes from the will to publish my current k3s configuration. It pro
 You can generate Kubernetes manifests as a Nix derivation. The derivation will be symlinked locally as a `./result` file. Use the following command to build the manifests:
 
 ```sh
-nix build -f default.nix --arg pkgs 'import <nixpkgs> {}' --argstr domain 'my.domain' manifests.grafana
+nix build -f default.nix --arg pkgs 'import <nixpkgs> {}' manifests.grafana
 ```
 
 - Arguments may need to be changed depending on the targeted deployment;
@@ -46,3 +46,9 @@ I didn't want to share sensitive data, so I ended up wrapping my helm values fil
 I chose not to use flakes as I'm not convinced by their approach, but it leads to painful command lines. We'll see.
 
 I used nushell scripts to automatize some `kubectl` commands to avoid shell syntax for better readability.
+
+## TODO:
+
+- create a proper diff command, using the existing conf
+- add secret management (using pass ?)
+- add automatic certificates management

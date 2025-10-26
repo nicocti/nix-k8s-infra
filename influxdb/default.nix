@@ -1,11 +1,10 @@
 {
-  domain,
-  email,
+  config,
 }:
 rec {
   namespace = "influxdb";
   name = "influxdb";
-  version = "3.3";
+  version = "3.4";
 
   extraManifests = [
     {
@@ -35,7 +34,7 @@ rec {
             containers = [
               {
                 name = name;
-                image = "influxdb:3.3-enterprise";
+                image = "influxdb:${version}-enterprise";
                 command = [
                   "influxdb3"
                   "serve"
@@ -46,7 +45,7 @@ rec {
                 env = [
                   {
                     name = "INFLUXDB3_ENTERPRISE_LICENSE_EMAIL";
-                    value = "${email}";
+                    value = "${config.influxdb.email}";
                   }
                   {
                     name = "INFLUXDB3_OBJECT_STORE";
@@ -128,7 +127,7 @@ rec {
         ingressClassName = "cilium";
         rules = [
           {
-            host = "influxdb.${domain}";
+            host = "influxdb.${config.domain}";
             http = {
               paths = [
                 {
@@ -147,7 +146,7 @@ rec {
             };
           }
         ];
-        tls = [ { hosts = [ "influxdb.${domain}" ]; } ];
+        tls = [ { hosts = [ "influxdb.${config.domain}" ]; } ];
       };
     }
   ];
