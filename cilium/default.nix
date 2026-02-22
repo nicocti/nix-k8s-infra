@@ -1,18 +1,59 @@
-{
-  config,
-}:
-{
+{config}: let
+  internalPodsCIDR = "10.42.0.0/16";
+in {
   name = "cilium";
   chart = "cilium";
   namespace = "cilium";
-  repo = "https://helm.cilium.io/";
-  version = "1.18.3";
-  hash = "sha256-wMKbd2SR2+5LKBEPtm4vHJRkGwyzNEprjEG5QZD9s5E=";
+  image = "oci://quay.io/cilium/charts/cilium";
+  version = "1.19.0";
+  hash = "sha256-4DjVw9ItefruZxpB4Tf4+zZimJcM5RXv3Cqhw/k3m9Q=";
 
   helmValues = {
-    ingressController = {
-      default = true;
+    k8sServiceHost = "127.0.0.1";
+    k8sServicePort = 6444;
+    rollOutCiliumPods = true; # when configmap is updated
+    kubeProxyReplacement = true;
+    # Rely on native routing:
+    routingMode = "native";
+    ipv4NativeRoutingCIDR = internalPodsCIDR;
+    autoDirectNodeRoutes = true;
+    # Enforce eBPF:
+    bpf = {
+      masquerade = true;
+      datapathMode = "netkit";
+      enableTCX = true; # need to check if kernel supports it, otherwise falls back to classic TC
+    };
+    l2announcements = {
       enabled = true;
+    };
+    l2NeighDiscovery = {
+      enabled = true;
+    };
+    enableLBIPAM = true;
+    ipam = {
+      mode = "cluster-pool";
+      operator = {
+        clusterPoolIPv4MaskSize = 24;
+        clusterPoolIPv4PodCIDRList = [internalPodsCIDR];
+      };
+    };
+    bandwidthManager = {
+      enabled = true;
+      bbr = true;
+    };
+    socketLB = {
+      enabled = true;
+    };
+    operator = {
+      replicas = 1;
+      rollOutPods = true; # when configmap is updated
+    };
+    envoy = {
+      enabled = true;
+    };
+    ingressController = {
+      enabled = true;
+      default = true;
       loadbalancerMode = "shared";
       defaultSecretNamespace = "cilium";
       defaultSecretName = "default-cert";
@@ -24,53 +65,28 @@
     };
     gatewayAPI = {
       enabled = true;
-      secretsNamespace = {
-        create = true;
-        name = "cilium-secrets";
-        sync = true;
-      };
     };
-    operator = {
-      replicas = 1;
-      rollOutPods = true;
-    };
-    rollOutCiliumPods = true;
-    bpf = {
-      masquerade = true;
-    };
-    kubeProxyReplacement = true;
     hubble = {
+      enabled = true;
       relay = {
         enabled = true;
       };
       ui = {
         enabled = true;
         ingress = {
-          annotations = { };
+          annotations = {};
           className = "cilium";
           enabled = true;
-          hosts = [ "hubble.${config.domain}" ];
-          labels = { };
-          tls = [ { hosts = [ "hubble.${config.domain}" ]; } ];
+          hosts = ["hubble.${config.domain}"];
+          labels = {};
+          tls = [{hosts = ["hubble.${config.domain}"];}];
         };
       };
-    };
-    k8sServiceHost = "${config.cilium.k8sApiAddr}";
-    k8sServicePort = 6443;
-    k8sClientRateLimit = {
-      qps = 30;
-      burst = 200;
-    };
-    l2announcements = {
-      enabled = true;
-    };
-    externalIPs = {
-      enabled = true;
     };
   };
   extraManifests = [
     {
-      apiVersion = "cilium.io/v2alpha1";
+      apiVersion = "cilium.io/v2";
       kind = "CiliumLoadBalancerIPPool";
       metadata = {
         name = "first-pool";

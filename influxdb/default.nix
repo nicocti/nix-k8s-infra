@@ -1,11 +1,11 @@
-{
-  config,
-}:
-rec {
+{config}: rec {
   namespace = "influxdb";
   name = "influxdb";
-  version = "3.4";
-
+  version = "3.8.0";
+  bucket = {
+    name = "influxdb";
+    secret = "garage-creds";
+  };
   extraManifests = [
     {
       apiVersion = "apps/v1";
@@ -14,7 +14,9 @@ rec {
         name = name;
         namespace = namespace;
         labels = {
-          "app.kubernetes.io/name" = name;
+          "app.kubernetes.io/name" = "influxdb3-enterprise";
+          "app.kubernetes.io/instance" = "influxdb";
+          "app.kubernetes.io/version" = version;
         };
       };
       spec = {
@@ -31,6 +33,15 @@ rec {
             };
           };
           spec = {
+            volumes = [
+              {
+                name = "admin-token";
+                secret = {
+                  secretName = "admin-token";
+                  defaultMode = 384; # "0600";
+                };
+              }
+            ];
             containers = [
               {
                 name = name;
@@ -38,29 +49,83 @@ rec {
                 command = [
                   "influxdb3"
                   "serve"
+                  "--mode=all"
+                  "--object-store=s3"
                   "--cluster-id=cluster0"
                   "--node-id=node0"
+                  "--admin-token-file=/run/secrets/admin-token/admin-token"
                 ];
-                ports = [ { containerPort = 8181; } ];
+                volumeMounts = [
+                  {
+                    name = "admin-token";
+                    mountPath = "/run/secrets/admin-token/";
+                    readOnly = true;
+                  }
+                ];
+                ports = [
+                  {
+                    containerPort = 8181;
+                    name = "http";
+                    protocol = "TCP";
+                  }
+                ];
+                readinessProbe = {
+                  failureThreshold = 3;
+                  httpGet = {
+                    path = "/health";
+                    port = "http";
+                    scheme = "HTTP";
+                  };
+                  periodSeconds = 5;
+                  successThreshold = 1;
+                  timeoutSeconds = 3;
+                };
+                livenessProbe = {
+                  failureThreshold = 3;
+                  httpGet = {
+                    path = "/health";
+                    port = "http";
+                    scheme = "HTTP";
+                  };
+                  periodSeconds = 10;
+                  successThreshold = 1;
+                  timeoutSeconds = 5;
+                };
+                startupProbe = {
+                  failureThreshold = 12;
+                  httpGet = {
+                    path = "/health";
+                    port = "http";
+                    scheme = "HTTP";
+                  };
+                  initialDelaySeconds = 10;
+                  periodSeconds = 5;
+                  successThreshold = 1;
+                  timeoutSeconds = 5;
+                };
                 env = [
                   {
                     name = "INFLUXDB3_ENTERPRISE_LICENSE_EMAIL";
                     value = "${config.influxdb.email}";
                   }
                   {
-                    name = "INFLUXDB3_OBJECT_STORE";
-                    value = "s3";
+                    name = "INFLUXDB3_ENTERPRISE_LICENSE_TYPE";
+                    value = "home";
                   }
                   {
                     name = "INFLUXDB3_BUCKET";
-                    value = "influxdb";
+                    value = bucket.name;
+                  }
+                  {
+                    name = "INFLUXDB3_DISABLE_AUTHZ";
+                    value = "health";
                   }
                   {
                     name = "AWS_ACCESS_KEY_ID";
                     valueFrom = {
                       secretKeyRef = {
-                        name = "s3-influxdb";
-                        key = "AWS_ACCESS_KEY_ID";
+                        name = bucket.secret;
+                        key = "access-key-id";
                       };
                     };
                   }
@@ -68,8 +133,8 @@ rec {
                     name = "AWS_SECRET_ACCESS_KEY";
                     valueFrom = {
                       secretKeyRef = {
-                        name = "s3-influxdb";
-                        key = "AWS_SECRET_ACCESS_KEY";
+                        name = bucket.secret;
+                        key = "secret-access-key";
                       };
                     };
                   }
@@ -87,11 +152,17 @@ rec {
                   }
                   {
                     name = "LOG_FILTER";
-                    value = "warn";
+                    value = "info";
                   }
                 ];
               }
             ];
+            securityContext = {
+              fsGroup = 1500;
+              runAsGroup = 1500;
+              runAsNonRoot = true;
+              runAsUser = 1500;
+            };
           };
         };
       };
@@ -102,16 +173,22 @@ rec {
       metadata = {
         name = name;
         namespace = namespace;
+        labels = {
+          "app.kubernetes.io/name" = "influxdb3-enterprise";
+          "app.kubernetes.io/instance" = "influxdb";
+          "app.kubernetes.io/version" = version;
+        };
       };
       spec = {
         selector = {
-          "app.kubernetes.io/name" = name;
+          "app.kubernetes.io/name" = "influxdb3-enterprise";
         };
         ports = [
           {
-            protocol = "TCP";
+            name = "http";
             port = 8181;
-            targetPort = 8181;
+            protocol = "TCP";
+            targetPort = "http";
           }
         ];
       };
@@ -122,6 +199,11 @@ rec {
       metadata = {
         name = "influxdb-api";
         namespace = namespace;
+        labels = {
+          "app.kubernetes.io/name" = "influxdb3-enterprise";
+          "app.kubernetes.io/instance" = "influxdb";
+          "app.kubernetes.io/version" = version;
+        };
       };
       spec = {
         ingressClassName = "cilium";
@@ -139,14 +221,74 @@ rec {
                       };
                     };
                   };
+                  path = "/api/v3/query";
+                  pathType = "Prefix";
+                }
+                {
+                  backend = {
+                    service = {
+                      name = name;
+                      port = {
+                        number = 8181;
+                      };
+                    };
+                  };
+                  path = "/query";
+                  pathType = "Prefix";
+                }
+                {
+                  backend = {
+                    service = {
+                      name = name;
+                      port = {
+                        number = 8181;
+                      };
+                    };
+                  };
                   path = "/";
+                  pathType = "Prefix";
+                }
+                {
+                  backend = {
+                    service = {
+                      name = name;
+                      port = {
+                        number = 8181;
+                      };
+                    };
+                  };
+                  path = "/api/v3/write_lp";
+                  pathType = "Prefix";
+                }
+                {
+                  backend = {
+                    service = {
+                      name = name;
+                      port = {
+                        number = 8181;
+                      };
+                    };
+                  };
+                  path = "/api/v2/write";
+                  pathType = "Prefix";
+                }
+                {
+                  backend = {
+                    service = {
+                      name = name;
+                      port = {
+                        number = 8181;
+                      };
+                    };
+                  };
+                  path = "/write";
                   pathType = "Prefix";
                 }
               ];
             };
           }
         ];
-        tls = [ { hosts = [ "influxdb.${config.domain}" ]; } ];
+        tls = [{hosts = ["influxdb.${config.domain}"];}];
       };
     }
   ];

@@ -1,19 +1,20 @@
-{
-  config,
-}:
-{
+{config}: {
   name = "garage";
   namespace = "garage";
   repo = "https://git.deuxfleurs.fr/Deuxfleurs/garage.git";
-  rev = "refs/tags/v1.3.0";
+  rev = "refs/tags/v2.2.0";
   path = "script/helm/garage";
-  hash = "sha256-fm19kthiZuL9hfAR52xxWrkqnDHe8cRjn2LJsCibd+w=";
-  patches = [ ./patches/add-namespace.patch ];
-  version = "1.3.0";
+  hash = "sha256-8NnwyiyJWGqFdTUerCV5QJq0uw8xji7HUX8sYPs5ztw=";
+  patches = [./patches/add-namespace.patch];
+  version = "2.2.0";
 
   helmValues = {
+    commonLabels = {
+      "app.${config.domain}/name" = "garage";
+    };
     garage = {
-      replicationMode = "2";
+      blockSize = "1048576"; # 1MiB, can be increaed up to 10Mib
+      replicationFactor = "3"; # minimum replicas for single node loss tolerance
     };
     deployment = {
       replicaCount = 4;
@@ -42,15 +43,38 @@
                 }
               ];
             }
+            {
+              host = "*.s3.${config.domain}";
+              paths = [
+                {
+                  path = "/";
+                  pathType = "Prefix";
+                }
+              ];
+            }
           ];
-          tls = [ { hosts = [ "s3.${config.domain}" ]; } ];
+          tls = [{hosts = ["s3.${config.domain}" "*.s3.${config.domain}"];}];
         };
       };
     };
     image = {
       repository = "dxflrs/arm64_garage";
-      tag = "v1.1.0";
+      tag = "v2.2.0";
     };
+    resources = {
+      limits = {
+        memory = "1024Mi";
+      };
+      requests = {
+        memory = "512Mi";
+      };
+    };
+    environment = [
+      {
+        name = "RUST_LOG";
+        value = "warn";
+      }
+    ];
     affinity = {
       podAntiAffinity = {
         requiredDuringSchedulingIgnoredDuringExecution = [
@@ -65,11 +89,5 @@
         ];
       };
     };
-    environment = [
-      {
-        name = "RUST_LOG";
-        value = "warn";
-      }
-    ];
   };
 }

@@ -1,24 +1,22 @@
-{ pkgs }:
-rec {
-  pullHelmChartFromGit =
-    {
-      name,
-      repo,
-      rev,
-      path ? "",
-      patches ? [ ],
-      hash ? pkgs.lib.fakeHash,
-      ...
-    }:
+{pkgs}: rec {
+  pullHelmChartFromGit = {
+    name,
+    repo,
+    rev,
+    path ? "",
+    patches ? [],
+    hash ? pkgs.lib.fakeHash,
+    ...
+  }:
     pkgs.stdenv.mkDerivation {
       name = "helm-chart-${name}-${rev}";
-      phases = [ "unpackPhase" "patchPhase" "installPhase" ];
+      phases = ["unpackPhase" "patchPhase" "installPhase"];
       src = pkgs.fetchgit {
         name = "helm-chart-sources-${name}-${rev}";
         url = repo;
         rev = rev;
         hash = hash;
-        sparseCheckout = [ path ];
+        sparseCheckout = [path];
       };
       patches = patches;
       installPhase = ''
@@ -27,24 +25,56 @@ rec {
       '';
     };
 
-  pullHelmChartFromRepo =
-    {
-      chart,
-      repo,
-      version,
-      hash ? pkgs.lib.fakeHash,
-      ...
-    }:
+  pullHelmChartFromTarball = {
+    url,
+    hash,
+    ...
+  }:
+    builtins.fetchTarball {
+      url = url;
+      sha256 = hash;
+    };
+
+  pullHelmChartFromOCI = {
+    chart,
+    image,
+    version,
+    hash ? pkgs.lib.fakeHash,
+    ...
+  }:
+    pkgs.runCommand "${chart}-helm-chart" {
+      buildInputs = [pkgs.kubernetes-helm];
+      outputHashMode = "recursive";
+      outputHashAlgo = "sha256";
+      outputHash = hash;
+    } ''
+      mkdir -p $out
+      helm pull ${image} \
+        --version ${version} \
+        --destination $out \
+        --untar
+      ls -lah $out
+      mv $out/${chart}/* $out
+      ls -lah $out
+    '';
+
+  pullHelmChartFromRepo = {
+    chart,
+    repo,
+    version,
+    hash ? pkgs.lib.fakeHash,
+    ...
+  }:
     pkgs.stdenv.mkDerivation {
       name = "helm-chart-${chart}-${version}";
-      nativeBuildInputs = [ pkgs.cacert ];
+      nativeBuildInputs = [pkgs.cacert];
 
-      phases = [ "installPhase" ];
+      phases = ["installPhase"];
       installPhase = ''
         export HELM_CACHE_HOME="$TMP/.helm"
         ${pkgs.kubernetes-helm}/bin/helm pull \
-        --version "${version}" --repo "${repo}" \
-        --untar --untardir $out "${chart}"
+        --version "${version}" \
+        --untar --untardir $out "${repo}/${chart}"
         mv $out/${chart}/* $out
         rm -r $out/*gz
       '';
@@ -53,24 +83,25 @@ rec {
       outputHash = hash;
     };
 
-  pullHelmChart =
-    value:
-    if builtins.hasAttr "rev" value then
-      pullHelmChartFromGit value
-    else if builtins.hasAttr "repo" value then
-      pullHelmChartFromRepo value
-    else
-      null;
+  pullHelmChart = value:
+    if builtins.hasAttr "rev" value
+    then pullHelmChartFromGit value
+    else if builtins.hasAttr "repo" value
+    then pullHelmChartFromRepo value
+    else if builtins.hasAttr "image" value
+    then pullHelmChartFromOCI value
+    else if builtins.hasAttr "url" value
+    then pullHelmChartFromTarball value
+    else null;
 
-  buildHelmChart =
-    {
-      name,
-      chart,
-      helmValues,
-      namespace,
-      extraManifests ? [ ],
-      ...
-    }:
+  buildHelmChart = {
+    name,
+    chart,
+    helmValues,
+    namespace,
+    extraManifests ? [],
+    ...
+  }:
     pkgs.stdenv.mkDerivation {
       name = name;
       manifests = builtins.toJSON extraManifests;
@@ -80,7 +111,7 @@ rec {
         "manifests"
       ];
 
-      phases = [ "installPhase" ];
+      phases = ["installPhase"];
       installPhase = ''
         export HELM_CACHE_HOME="$TMP/.helm"
         ${pkgs.kubernetes-helm}/bin/helm template \
@@ -89,36 +120,37 @@ rec {
         "${name}" "${chart}" > $out
 
         # Append extra manifests as additional YAML documents if any
-        if ${if (builtins.length extraManifests) > 0 then "true" else "false"}; then
+        if ${
+          if (builtins.length extraManifests) > 0
+          then "true"
+          else "false"
+        }; then
           echo "---" >> $out
           ${pkgs.yq-go}/bin/yq -oy -P ".[] | split_doc" $manifestsPath >> $out
         fi
       '';
     };
 
-  buildManifestsOnly =
-    {
-      name,
-      namespace ? name,
-      extraManifests,
-      ...
-    }:
+  buildManifestsOnly = {
+    name,
+    namespace ? name,
+    extraManifests,
+    ...
+  }:
     pkgs.stdenv.mkDerivation {
       name = name;
       manifests = builtins.toJSON extraManifests;
-      passAsFile = [ "manifests" ];
-      phases = [ "installPhase" ];
+      passAsFile = ["manifests"];
+      phases = ["installPhase"];
       installPhase = ''
         ${pkgs.yq-go}/bin/yq -oy -P ".[] | split_doc" $manifestsPath > $out
       '';
     };
 
-  buildManifests =
-    value:
-    if value.chart != null then
-      buildHelmChart value
-    else if builtins.hasAttr "extraManifests" value then
-      buildManifestsOnly value
-    else
-      null;
+  buildManifests = value:
+    if value.chart != null
+    then buildHelmChart value
+    else if builtins.hasAttr "extraManifests" value
+    then buildManifestsOnly value
+    else null;
 }
