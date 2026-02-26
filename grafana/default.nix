@@ -1,13 +1,9 @@
-{
-  config,
-}:
-{
+{config}: rec {
   name = "grafana";
-  chart = "grafana";
   namespace = "grafana";
-  repo = "https://grafana.github.io/helm-charts/";
-  version = "10.1.2";
-  hash = "sha256-++ZBsLLr2ICie6qs0YfBHYLbO/BWuUn3Cws3JZRv6hU=";
+  version = "11.2.1";
+  url = "https://github.com/grafana-community/helm-charts/releases/download/grafana-${version}/grafana-${version}.tgz";
+  hash = "0qy31ym4mk2ilwhlqfafrf93j2vhz8306fv4nfss0fj3gpa59fbv";
 
   helmValues = {
     replicas = 1;
@@ -15,8 +11,8 @@
     createConfigmap = true;
     ingress = {
       enabled = true;
-      hosts = [ "grafana.${config.domain}" ];
-      tls = [ { hosts = [ "grafana.${config.domain}" ]; } ];
+      hosts = ["grafana.${config.domain}"];
+      tls = [{hosts = ["grafana.${config.domain}"];}];
     };
     persistence = {
       enabled = false;
@@ -26,7 +22,7 @@
       userKey = "admin-user";
       passwordKey = "admin-password";
     };
-    envFromSecrets = [ { name = "influx-auth"; } ];
+    envFromSecrets = [{name = "influx-auth";}];
     datasources = {
       "datasources.yaml" = {
         apiVersion = 1;
@@ -47,7 +43,7 @@
             };
           }
         ];
-        deleteDatasources = [ { name = "Prometheus"; } ];
+        deleteDatasources = [{name = "Prometheus";}];
       };
     };
     "grafana.ini" = {

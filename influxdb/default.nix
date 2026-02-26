@@ -23,13 +23,13 @@
         replicas = 1;
         selector = {
           matchLabels = {
-            "app.kubernetes.io/name" = name;
+            "app.kubernetes.io/name" = "influxdb3-enterprise";
           };
         };
         template = {
           metadata = {
             labels = {
-              "app.kubernetes.io/name" = name;
+              "app.kubernetes.io/name" = "influxdb3-enterprise";
             };
           };
           spec = {

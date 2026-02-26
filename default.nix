@@ -21,8 +21,7 @@ in rec {
     grafana = import ./grafana {inherit config;};
     influxdb = import ./influxdb {inherit config;};
     cilium = import ./cilium {inherit config;};
-    opentelemetry-daemonset = import ./opentelemetry/daemonset.nix {};
-    opentelemetry-deployment = import ./opentelemetry/deployment.nix {};
+    opentelemetry = import ./opentelemetry {inherit config;};
   };
 
   # Get charts as Nix derivations:
