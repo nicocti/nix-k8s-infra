@@ -11,9 +11,9 @@
       "version_upper_bound": null,
       "release_prefix": null,
       "submodules": false,
-      "version": "latest",
-      "revision": "e92033d8960a363b963cce697aa3ff091fe42a8a",
-      "url": "https://api.github.com/repos/nix-community/disko/tarball/latest",
+      "version": "v1.13.0",
+      "revision": "56ef5e72fec74b993ad0973b2dfa4eadeb48ba41",
+      "url": "https://api.github.com/repos/nix-community/disko/tarball/v1.13.0",
       "hash": "03jz60kw0khm1lp72q65z8gq69bfrqqbj08kw0hbiav1qh3g7p08"
     },
     "nixos-raspberrypi": {
@@ -25,9 +25,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "251861d8e7e4806e185a8e41e09b3ad1e6e088e6",
-      "url": "https://github.com/nvmd/nixos-raspberrypi/archive/251861d8e7e4806e185a8e41e09b3ad1e6e088e6.tar.gz",
-      "hash": "1xirmcrk6wv5j85k3yvxx75vq6d57r0nirlgrj5gfq1b7h1kiljq"
+      "revision": "6b30596bea9047a7cbb55cb58e6f8a3efa4012e2",
+      "url": "https://github.com/nvmd/nixos-raspberrypi/archive/6b30596bea9047a7cbb55cb58e6f8a3efa4012e2.tar.gz",
+      "hash": "1s2i8jzrrs62y0lhxx08cxypxbjr64nv5qykzijhkb7d7jbhi1dz"
     },
     "nixpkgs": {
       "type": "Git",
@@ -38,9 +38,9 @@
       },
       "branch": "modules-with-keys-25.11",
       "submodules": false,
-      "revision": "071e76e7df3520f30f8a213b37f2f3f4cd96e937",
-      "url": "https://github.com/nvmd/nixpkgs/archive/071e76e7df3520f30f8a213b37f2f3f4cd96e937.tar.gz",
-      "hash": "0wnwq2f3k4n6l8wgyl5f58rf2hr6szhz6qwrmm10lb14nylrbgh1"
+      "revision": "2597cb7e564b9004c9d3182afb29b37ae842411a",
+      "url": "https://github.com/nvmd/nixpkgs/archive/2597cb7e564b9004c9d3182afb29b37ae842411a.tar.gz",
+      "hash": "0mmwbqkgq5yw0lpfdv0h8mm7xbfrc7wxpf5w1w1qaihdk32gzri8"
     }
   },
   "version": 5
