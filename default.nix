@@ -2,12 +2,13 @@
   ssid ? builtins.getEnv "SSID",
   pwd ? builtins.getEnv "PASS",
   pkgs,
+  lib ? pkgs.lib,
   ...
 }: let
   config = import ./config.nix {};
-  # Import Kubernetes/Helm/Nix helpers:
   kubelib = import ./lib.nix {inherit pkgs;};
   host = import ./hosts;
+  manifestsDir = ./manifests;
 in rec {
   # Raspberry Pi setup:
   installer = (import ./installer {inherit ssid pwd;}).config.system.build.sdImage;
@@ -16,21 +17,17 @@ in rec {
   toplevel = host.config.system.build.toplevel;
 
   # Load configuration of our Kubernetes applications:
-  conf = {
-    garage = import ./garage {inherit config;};
-    grafana = import ./grafana {inherit config;};
-    influxdb = import ./influxdb {inherit config;};
-    cilium = import ./cilium {inherit config;};
-    opentelemetry = import ./opentelemetry {inherit config;};
-  };
+  configs = lib.mapAttrs (
+    name: _type: import (manifestsDir + "/${name}") {inherit config;}
+  ) (builtins.readDir manifestsDir);
 
   # Get charts as Nix derivations:
-  charts = builtins.mapAttrs (name: value: kubelib.pullHelmChart value) conf;
+  charts = builtins.mapAttrs (name: value: kubelib.pullHelmChart value) configs;
 
   # Get generated manifests as Nix derivations:
   manifests =
     builtins.mapAttrs (
       name: value: kubelib.buildManifests (value // {chart = charts.${name};})
     )
-    conf;
+    configs;
 }

@@ -1,7 +1,7 @@
 {config}: rec {
   name = "grafana";
-  namespace = "grafana";
   version = "11.2.1";
+  namespace = "grafana";
   url = "https://github.com/grafana-community/helm-charts/releases/download/grafana-${version}/grafana-${version}.tgz";
   hash = "0qy31ym4mk2ilwhlqfafrf93j2vhz8306fv4nfss0fj3gpa59fbv";
 
@@ -9,19 +9,22 @@
     replicas = 1;
     headlessService = false;
     createConfigmap = true;
+    persistence.enabled = false;
+    testFramework.enabled = false;
+    sidecar.logLevel = "WARN";
+
     ingress = {
       enabled = true;
       hosts = ["grafana.${config.domain}"];
       tls = [{hosts = ["grafana.${config.domain}"];}];
     };
-    persistence = {
-      enabled = false;
-    };
+
     admin = {
       existingSecret = "grafana-auth";
       userKey = "admin-user";
       passwordKey = "admin-password";
     };
+
     envFromSecrets = [{name = "influx-auth";}];
     datasources = {
       "datasources.yaml" = {
@@ -47,19 +50,11 @@
       };
     };
     "grafana.ini" = {
-      analytics = {
-        check_for_updates = false;
-      };
+      analytics.check_for_updates = false;
       log = {
         mode = "console";
         level = "warn";
       };
-    };
-    sidecar = {
-      logLevel = "WARN";
-    };
-    testFramework = {
-      enabled = false;
     };
   };
 }

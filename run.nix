@@ -4,11 +4,6 @@
 in {
   test = builtins.trace default.outputs.out default;
 
-  setupCA = pkgs.writeShellScriptBin "setupCA" ''
-    ${pkgs.lib.getExe pkgs.minica} -domains '*.${default.conf.domain}'
-    ${kubectl} -n ${default.conf.cilium.namespace} create secret tls default-cert --key=_.${default.conf.domain}/key.pem --cert=_.${default.conf.domain}/cert.pem
-  '';
-
   applyGarageLayout = pkgs.writers.writeNuBin "applyGarageLayout" ''
     def --wrapped garage [...args] {
         ${kubectl} -n ${default.conf.garage.namespace} exec -i -c garage statefulsets/garage -- ./garage ...$args
@@ -88,26 +83,26 @@ in {
       influxdb3 create database --retention-period 30d otel --token $admin
     }
     if not ("otelco" in $tokens.name) {
-      let token = (
-        influxdb3 create token --permission "db:otel:read,write" --name otelco --token $admin
+      let token = (influxdb3 create token --permission "db:otel:read,write" --name otelco --token $admin
         | lines
         | where ($it | str contains "Token:")
         | parse "{key}:{value}"
         | get value
-        | str trim
         | get 0
+        | str trim
+        | str substring 5..
       )
       ${kubectl} -n otel create secret generic influx-auth --from-literal=INFLUXDB_TOKEN=($token)
     }
     if not ("grafana" in $tokens.name) {
-      let token = (
-        influxdb3 create token --permission "db:*:read" --name grafana --token $admin
+      let token = (influxdb3 create token --permission "db:*:read" --name grafana --token $admin
         | lines
         | where ($it | str contains "Token:")
         | parse "{key}:{value}"
         | get value
-        | str trim
         | get 0
+        | str trim
+        | str substring 5..
       )
       ${kubectl} -n grafana create secret generic influx-auth --from-literal=INFLUXDB_TOKEN=($token)
     }

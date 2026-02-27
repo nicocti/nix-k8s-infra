@@ -15,7 +15,7 @@
         name = "helm-chart-sources-${name}-${rev}";
         url = repo;
         rev = rev;
-        hash = hash;
+        sha256 = hash;
         sparseCheckout = [path];
       };
       patches = patches;
@@ -36,13 +36,13 @@
     };
 
   pullHelmChartFromOCI = {
-    chart,
+    name,
     image,
     version,
     hash ? pkgs.lib.fakeHash,
     ...
   }:
-    pkgs.runCommand "${chart}-helm-chart" {
+    pkgs.runCommand "${name}-helm-chart" {
       buildInputs = [pkgs.kubernetes-helm];
       outputHashMode = "recursive";
       outputHashAlgo = "sha256";
@@ -54,7 +54,7 @@
         --destination $out \
         --untar
       ls -lah $out
-      mv $out/${chart}/* $out
+      mv $out/${name}/* $out
       ls -lah $out
     '';
 

@@ -1,11 +1,12 @@
 {config}: rec {
-  namespace = "influxdb";
   name = "influxdb";
   version = "3.8.0";
+  namespace = "influxdb";
   bucket = {
     name = "influxdb";
     secret = "garage-creds";
   };
+
   extraManifests = [
     {
       apiVersion = "apps/v1";
@@ -21,17 +22,9 @@
       };
       spec = {
         replicas = 1;
-        selector = {
-          matchLabels = {
-            "app.kubernetes.io/name" = "influxdb3-enterprise";
-          };
-        };
+        selector.matchLabels."app.kubernetes.io/name" = "influxdb3-enterprise";
         template = {
-          metadata = {
-            labels = {
-              "app.kubernetes.io/name" = "influxdb3-enterprise";
-            };
-          };
+          metadata.labels."app.kubernetes.io/name" = "influxdb3-enterprise";
           spec = {
             volumes = [
               {
@@ -122,20 +115,16 @@
                   }
                   {
                     name = "AWS_ACCESS_KEY_ID";
-                    valueFrom = {
-                      secretKeyRef = {
-                        name = bucket.secret;
-                        key = "access-key-id";
-                      };
+                    valueFrom.secretKeyRef = {
+                      name = bucket.secret;
+                      key = "access-key-id";
                     };
                   }
                   {
                     name = "AWS_SECRET_ACCESS_KEY";
-                    valueFrom = {
-                      secretKeyRef = {
-                        name = bucket.secret;
-                        key = "secret-access-key";
-                      };
+                    valueFrom.secretKeyRef = {
+                      name = bucket.secret;
+                      key = "secret-access-key";
                     };
                   }
                   {
@@ -207,88 +196,74 @@
       };
       spec = {
         ingressClassName = "cilium";
+        tls = [{hosts = ["influxdb.${config.domain}"];}];
         rules = [
           {
             host = "influxdb.${config.domain}";
-            http = {
-              paths = [
-                {
-                  backend = {
-                    service = {
-                      name = name;
-                      port = {
-                        number = 8181;
-                      };
-                    };
+            http.paths = [
+              {
+                backend = {
+                  service = {
+                    name = name;
+                    port.number = 8181;
                   };
-                  path = "/api/v3/query";
-                  pathType = "Prefix";
-                }
-                {
-                  backend = {
-                    service = {
-                      name = name;
-                      port = {
-                        number = 8181;
-                      };
-                    };
+                };
+                path = "/api/v3/query";
+                pathType = "Prefix";
+              }
+              {
+                backend = {
+                  service = {
+                    name = name;
+                    port.number = 8181;
                   };
-                  path = "/query";
-                  pathType = "Prefix";
-                }
-                {
-                  backend = {
-                    service = {
-                      name = name;
-                      port = {
-                        number = 8181;
-                      };
-                    };
+                };
+                path = "/query";
+                pathType = "Prefix";
+              }
+              {
+                backend = {
+                  service = {
+                    name = name;
+                    port.number = 8181;
                   };
-                  path = "/";
-                  pathType = "Prefix";
-                }
-                {
-                  backend = {
-                    service = {
-                      name = name;
-                      port = {
-                        number = 8181;
-                      };
-                    };
+                };
+                path = "/";
+                pathType = "Prefix";
+              }
+              {
+                backend = {
+                  service = {
+                    name = name;
+                    port.number = 8181;
                   };
-                  path = "/api/v3/write_lp";
-                  pathType = "Prefix";
-                }
-                {
-                  backend = {
-                    service = {
-                      name = name;
-                      port = {
-                        number = 8181;
-                      };
-                    };
+                };
+                path = "/api/v3/write_lp";
+                pathType = "Prefix";
+              }
+              {
+                backend = {
+                  service = {
+                    name = name;
+                    port.number = 8181;
                   };
-                  path = "/api/v2/write";
-                  pathType = "Prefix";
-                }
-                {
-                  backend = {
-                    service = {
-                      name = name;
-                      port = {
-                        number = 8181;
-                      };
-                    };
+                };
+                path = "/api/v2/write";
+                pathType = "Prefix";
+              }
+              {
+                backend = {
+                  service = {
+                    name = name;
+                    port.number = 8181;
                   };
-                  path = "/write";
-                  pathType = "Prefix";
-                }
-              ];
-            };
+                };
+                path = "/write";
+                pathType = "Prefix";
+              }
+            ];
           }
         ];
-        tls = [{hosts = ["influxdb.${config.domain}"];}];
       };
     }
   ];

@@ -1,13 +1,14 @@
-{config, ...}: rec {
+{...}: rec {
   name = "opentelemetry";
-  namespace = "otel";
   version = "0.106.0";
+  namespace = "otel";
   url = "https://github.com/open-telemetry/opentelemetry-helm-charts/releases/download/opentelemetry-operator-${version}/opentelemetry-operator-${version}.tgz";
   hash = "05k57n3rkwf1yrzzwp0cp19l3vnq8l2117gpgckzn8364djwicgw";
 
   helmValues = {
     replicaCount = 1;
-    revisionHistoryLimit = 10;
+    revisionHistoryLimit = 3;
+    # use self-signed certs (no cert-manager installed for now)
     admissionWebhooks.certManager.enabled = false;
     kubeRBACProxy.enabled = false;
     manager = {
@@ -21,11 +22,9 @@
       extraEnvs = [
         {
           name = "GOMEMLIMIT";
-          valueFrom = {
-            resourceFieldRef = {
-              containerName = "manager";
-              resource = "limits.memory";
-            };
+          valueFrom.resourceFieldRef = {
+            containerName = "manager";
+            resource = "limits.memory";
           };
         }
       ];
@@ -46,13 +45,13 @@
       apiVersion = "rbac.authorization.k8s.io/v1";
       kind = "ClusterRole";
       metadata = {
+        name = "daemonset-otel-cluster-role";
         labels = {
           "app.kubernetes.io/component" = "opentelemetry-collector";
           "app.kubernetes.io/instance" = "otel.daemonset";
           "app.kubernetes.io/name" = "daemonset-otel-cluster-role";
           "app.kubernetes.io/part-of" = "opentelemetry";
         };
-        name = "daemonset-otel-cluster-role";
       };
       rules = [
         {
@@ -91,13 +90,13 @@
       apiVersion = "rbac.authorization.k8s.io/v1";
       kind = "ClusterRoleBinding";
       metadata = {
+        name = "daemonset-otel-collector";
         labels = {
           "app.kubernetes.io/component" = "opentelemetry-collector";
           "app.kubernetes.io/instance" = "otel.daemonset";
           "app.kubernetes.io/name" = "daemonset-otel-collector";
           "app.kubernetes.io/part-of" = "opentelemetry";
         };
-        name = "daemonset-otel-collector";
       };
       roleRef = {
         apiGroup = "rbac.authorization.k8s.io";
@@ -116,13 +115,13 @@
       apiVersion = "rbac.authorization.k8s.io/v1";
       kind = "ClusterRole";
       metadata = {
+        name = "deployment-otel-cluster-role";
         labels = {
           "app.kubernetes.io/name" = "deployment-otel-cluster-role";
           "app.kubernetes.io/component" = "opentelemetry-collector";
           "app.kubernetes.io/instance" = "otel.deployment";
           "app.kubernetes.io/part-of" = "opentelemetry";
         };
-        name = "deployment-otel-cluster-role";
       };
       rules = [
         {
@@ -161,13 +160,13 @@
       apiVersion = "rbac.authorization.k8s.io/v1";
       kind = "ClusterRoleBinding";
       metadata = {
+        name = "deployment-otel-collector";
         labels = {
           "app.kubernetes.io/component" = "opentelemetry-collector";
           "app.kubernetes.io/instance" = "otel.deployment";
           "app.kubernetes.io/name" = "deployment-otel-collector";
           "app.kubernetes.io/part-of" = "opentelemetry";
         };
-        name = "deployment-otel-collector";
       };
       roleRef = {
         apiGroup = "rbac.authorization.k8s.io";
@@ -178,7 +177,7 @@
         {
           kind = "ServiceAccount";
           name = "deployment-collector";
-          namespace = "otel";
+          namespace = namespace;
         }
       ];
     }
@@ -192,15 +191,12 @@
       spec = {
         mode = "daemonset";
         terminationGracePeriodSeconds = 100;
+        # check if a hostNetwork can still be exposed via a service with LoadBalancing
         hostNetwork = false;
         hostPID = true;
         resources = {
-          limits = {
-            memory = "500Mi";
-          };
-          requests = {
-            memory = "250Mi";
-          };
+          limits.memory = "500Mi";
+          requests.memory = "250Mi";
         };
         env = [
           {
@@ -213,29 +209,23 @@
           }
           {
             name = "K8S_NAMESPACE";
-            valueFrom = {
-              fieldRef = {
-                apiVersion = "v1";
-                fieldPath = "metadata.namespace";
-              };
+            valueFrom.fieldRef = {
+              apiVersion = "v1";
+              fieldPath = "metadata.namespace";
             };
           }
           {
             name = "K8S_POD_NAME";
-            valueFrom = {
-              fieldRef = {
-                apiVersion = "v1";
-                fieldPath = "metadata.name";
-              };
+            valueFrom.fieldRef = {
+              apiVersion = "v1";
+              fieldPath = "metadata.name";
             };
           }
           {
             name = "K8S_POD_IP";
-            valueFrom = {
-              fieldRef = {
-                apiVersion = "v1";
-                fieldPath = "status.podIP";
-              };
+            valueFrom.fieldRef = {
+              apiVersion = "v1";
+              fieldPath = "status.podIP";
             };
           }
           {
@@ -245,9 +235,7 @@
         ];
         envFrom = [
           {
-            secretRef = {
-              name = "influx-auth";
-            };
+            secretRef.name = "influx-auth";
           }
         ];
         volumeMounts = [
@@ -270,15 +258,15 @@
         ];
         volumes = [
           {
-            hostPath = {path = "/var/log/pods";};
+            hostPath.path = "/var/log/pods";
             name = "varlogpods";
           }
           {
-            hostPath = {path = "/var/lib/docker/containers";};
+            hostPath.path = "/var/lib/docker/containers";
             name = "varlibdockercontainers";
           }
           {
-            hostPath = {path = "/";};
+            hostPath.path = "/";
             name = "hostfs";
           }
         ];
@@ -296,7 +284,7 @@
                   type = "container";
                 }
               ];
-              retry_on_failure = {enabled = true;};
+              retry_on_failure.enabled = true;
               start_at = "end";
             };
             "hostmetrics/short" = {
@@ -306,179 +294,95 @@
                 load = {
                   cpu_average = true;
                   metrics = {
-                    "system.cpu.load_average.15m" = {
-                      enabled = true;
-                    };
-                    "system.cpu.load_average.5m" = {
-                      enabled = true;
-                    };
-                    "system.cpu.load_average.1m" = {
-                      enabled = true;
-                    };
+                    "system.cpu.load_average.15m".enabled = true;
+                    "system.cpu.load_average.5m".enabled = true;
+                    "system.cpu.load_average.1m".enabled = true;
                   };
                 };
-                memory = {
-                  metrics = {
-                    "system.memory.usage" = {
-                      enabled = true;
-                    };
-                    "system.memory.utilization" = {
-                      enabled = true;
-                    };
-                    "system.memory.limit" = {
-                      enabled = true;
-                    };
-                    "system.memory.page_size" = {
-                      enabled = false;
-                    };
-                    "system.linux.memory.available" = {
-                      enabled = false;
-                    };
-                    "system.linux.memory.dirty" = {
-                      enabled = false;
-                    };
-                  };
+              };
+              memory = {
+                metrics = {
+                  "system.memory.usage".enabled = true;
+                  "system.memory.utilization".enabled = true;
+                  "system.memory.limit".enabled = true;
+                  "system.memory.page_size".enabled = false;
+                  "system.linux.memory.available".enabled = false;
+                  "system.linux.memory.dirty".enabled = false;
                 };
-                network = {
-                  include = {
-                    interfaces = [];
-                  };
-                  metrics = {
-                    "system.network.connections" = {
-                      enabled = false;
-                    };
-                    "system.network.dropped" = {
-                      enabled = false;
-                    };
-                    "system.network.errors" = {
-                      enabled = false;
-                    };
-                    "system.network.io" = {
-                      enabled = false;
-                    };
-                    "system.network.packets" = {
-                      enabled = false;
-                    };
-                    "system.network.conntrack.count" = {
-                      enabled = false;
-                    };
-                    "system.network.conntrack.max" = {
-                      enabled = false;
-                    };
-                  };
+              };
+              network = {
+                include = {
+                  interfaces = [];
                 };
-                cpu = {
-                  metrics = {
-                    "system.cpu.time" = {
-                      enabled = true;
-                    };
-                    "system.cpu.logical.count" = {
-                      enabled = true;
-                    };
-                    "system.cpu.physical.count" = {
-                      enabled = true;
-                    };
-                    "system.cpu.utilization" = {
-                      enabled = true;
-                    };
-                    "system.cpu.frequency" = {
-                      enabled = false;
-                    };
-                  };
+                metrics = {
+                  "system.network.connections".enabled = false;
+                  "system.network.dropped".enabled = false;
+                  "system.network.errors".enabled = false;
+                  "system.network.io".enabled = false;
+                  "system.network.packets".enabled = false;
+                  "system.network.conntrack.count".enabled = false;
+                  "system.network.conntrack.max".enabled = false;
                 };
-                disk = {
-                  include = {
-                    devices = [
-                      "/dev/sda*"
-                      "/dev/mapper*"
-                    ];
-                    match_type = "regexp";
-                  };
-                  metrics = {
-                    "system.disk.io" = {
-                      enabled = true;
-                    };
-                    "system.disk.io_time" = {
-                      enabled = true;
-                    };
-                    "system.disk.merged" = {
-                      enabled = true;
-                    };
-                    "system.disk.operation_time" = {
-                      enabled = true;
-                    };
-                    "system.disk.operations" = {
-                      enabled = true;
-                    };
-                    "system.disk.pending_operations" = {
-                      enabled = true;
-                    };
-                    "system.disk.weighted_io_time" = {
-                      enabled = true;
-                    };
-                  };
+              };
+              cpu = {
+                metrics = {
+                  "system.cpu.time".enabled = true;
+                  "system.cpu.logical.count".enabled = true;
+                  "system.cpu.physical.count".enabled = true;
+                  "system.cpu.utilization".enabled = true;
+                  "system.cpu.frequency".enabled = false;
                 };
-                paging = {metrics = {"system.paging.usage" = {enabled = true;};};};
-                process = {
-                  include = {
-                    names = [
-                      "systemd"
-                      "containerd"
-                      "sshd"
-                    ];
-                    match_type = "strict";
-                  };
-                  mute_process_all_errors = true;
-                  mute_process_name_error = true;
-                  mute_process_exe_error = true;
-                  mute_process_io_error = true;
-                  mute_process_user_error = true;
-                  mute_process_cgroup_error = true;
-                  scrape_process_delay = "15s";
-                  metrics = {
-                    "process.cpu.time" = {
-                      enabled = true;
-                    };
-                    "process.disk.io" = {
-                      enabled = true;
-                    };
-                    "process.memory.usage" = {
-                      enabled = true;
-                    };
-                    "process.memory.virtual" = {
-                      enabled = true;
-                    };
-                    "process.context_switches" = {
-                      enabled = true;
-                    };
-                    "process.cpu.utilization" = {
-                      enabled = true;
-                    };
-                    "process.disk.operations" = {
-                      enabled = true;
-                    };
-                    "process.handles" = {
-                      enabled = true;
-                    };
-                    "process.memory.utilization" = {
-                      enabled = true;
-                    };
-                    "process.open_file_descriptors" = {
-                      enabled = true;
-                    };
-                    "process.paging.faults" = {
-                      enabled = true;
-                    };
-                    "process.signals_pending" = {
-                      enabled = true;
-                    };
-                    "process.threads" = {
-                      enabled = true;
-                    };
-                    "process.uptime" = {
-                      enabled = true;
-                    };
-                  };
+              };
+              disk = {
+                include = {
+                  devices = [
+                    "/dev/sda*"
+                    "/dev/mapper*"
+                  ];
+                  match_type = "regexp";
+                };
+                metrics = {
+                  "system.disk.io".enabled = true;
+                  "system.disk.io_time".enabled = true;
+                  "system.disk.merged".enabled = true;
+                  "system.disk.operation_time".enabled = true;
+                  "system.disk.operations".enabled = true;
+                  "system.disk.pending_operations".enabled = true;
+                  "system.disk.weighted_io_time".enabled = true;
+                };
+              };
+              paging.metrics."system.paging.usage".enabled = true;
+              process = {
+                include = {
+                  names = [
+                    "systemd"
+                    "containerd"
+                    "sshd"
+                  ];
+                  match_type = "strict";
+                };
+                mute_process_all_errors = true;
+                mute_process_name_error = true;
+                mute_process_exe_error = true;
+                mute_process_io_error = true;
+                mute_process_user_error = true;
+                mute_process_cgroup_error = true;
+                scrape_process_delay = "15s";
+                metrics = {
+                  "process.cpu.time".enabled = true;
+                  "process.disk.io".enabled = true;
+                  "process.memory.usage".enabled = true;
+                  "process.memory.virtual".enabled = true;
+                  "process.context_switches".enabled = true;
+                  "process.cpu.utilization".enabled = true;
+                  "process.disk.operations".enabled = true;
+                  "process.handles".enabled = true;
+                  "process.memory.utilization".enabled = true;
+                  "process.open_file_descriptors".enabled = true;
+                  "process.paging.faults".enabled = true;
+                  "process.signals_pending".enabled = true;
+                  "process.threads".enabled = true;
+                  "process.uptime".enabled = true;
                 };
               };
             };
@@ -486,13 +390,7 @@
               collection_interval = "600s";
               root_path = "/hostfs";
               scrapers = {
-                system = {
-                  metrics = {
-                    "system.uptime" = {
-                      enabled = true;
-                    };
-                  };
-                };
+                system.metrics."system.uptime".enabled = true;
                 filesystem = {
                   exclude_fs_types = {
                     fs_types = [
@@ -537,15 +435,9 @@
                   };
                   include_virtual_filesystems = false;
                   metrics = {
-                    "system.filesystem.inodes.usage" = {
-                      enabled = true;
-                    };
-                    "system.filesystem.usage" = {
-                      enabled = true;
-                    };
-                    "system.filesystem.utilization" = {
-                      enabled = true;
-                    };
+                    "system.filesystem.inodes.usage".enabled = true;
+                    "system.filesystem.usage".enabled = true;
+                    "system.filesystem.utilization".enabled = true;
                   };
                 };
               };
@@ -555,74 +447,74 @@
               collection_interval = "15s";
               insecure_skip_verify = true;
               endpoint = "https://\${env:K8S_NODE_IP}:10250";
-              k8s_api_config = {auth_type = "serviceAccount";};
+              k8s_api_config.auth_type = "serviceAccount";
               extra_metadata_labels = ["container.id" "k8s.volume.type"];
               metric_groups = ["node" "pod" "volume" "container"];
               metrics = {
-                "container.cpu.time" = {enabled = false;};
-                "container.cpu.usage" = {enabled = true;};
-                "container.filesystem.available" = {enabled = false;};
-                "container.filesystem.capacity" = {enabled = false;};
-                "container.filesystem.usage" = {enabled = true;};
-                "container.memory.available" = {enabled = true;};
-                "container.memory.major_page_faults" = {enabled = true;};
-                "container.memory.page_faults" = {enabled = true;};
-                "container.memory.rss" = {enabled = true;};
-                "container.memory.usage" = {enabled = true;};
-                "container.memory.working_set" = {enabled = true;};
-                "container.uptime" = {enabled = true;};
-                "k8s.container.cpu.node.utilization" = {enabled = true;};
-                "k8s.container.cpu_limit_utilization" = {enabled = true;};
-                "k8s.container.cpu_request_utilization" = {enabled = true;};
-                "k8s.container.memory.node.utilization" = {enabled = true;};
-                "k8s.container.memory_limit_utilization" = {enabled = true;};
-                "k8s.container.memory_request_utilization" = {enabled = true;};
-                "k8s.node.cpu.time" = {enabled = false;};
-                "k8s.node.cpu.usage" = {enabled = false;};
-                "k8s.node.filesystem.available" = {enabled = false;};
-                "k8s.node.filesystem.capacity" = {enabled = false;};
-                "k8s.node.filesystem.usage" = {enabled = false;};
-                "k8s.node.memory.available" = {enabled = false;};
-                "k8s.node.memory.major_page_faults" = {enabled = false;};
-                "k8s.node.memory.page_faults" = {enabled = false;};
-                "k8s.node.memory.rss" = {enabled = false;};
-                "k8s.node.memory.usage" = {enabled = false;};
-                "k8s.node.memory.working_set" = {enabled = false;};
-                "k8s.node.network.errors" = {enabled = false;};
-                "k8s.node.network.io" = {enabled = true;};
-                "k8s.node.uptime" = {enabled = true;};
-                "k8s.pod.cpu.node.utilization" = {enabled = true;};
-                "k8s.pod.cpu.time" = {enabled = false;};
-                "k8s.pod.cpu.usage" = {enabled = true;};
-                "k8s.pod.cpu_limit_utilization" = {enabled = true;};
-                "k8s.pod.cpu_request_utilization" = {enabled = true;};
-                "k8s.pod.filesystem.available" = {enabled = false;};
-                "k8s.pod.filesystem.capacity" = {enabled = false;};
-                "k8s.pod.filesystem.usage" = {enabled = true;};
-                "k8s.pod.memory.available" = {enabled = true;};
-                "k8s.pod.memory.major_page_faults" = {enabled = true;};
-                "k8s.pod.memory.node.utilization" = {enabled = true;};
-                "k8s.pod.memory.page_faults" = {enabled = true;};
-                "k8s.pod.memory.rss" = {enabled = true;};
-                "k8s.pod.memory.usage" = {enabled = true;};
-                "k8s.pod.memory.working_set" = {enabled = true;};
-                "k8s.pod.memory_limit_utilization" = {enabled = true;};
-                "k8s.pod.memory_request_utilization" = {enabled = true;};
-                "k8s.pod.network.errors" = {enabled = true;};
-                "k8s.pod.network.io" = {enabled = true;};
-                "k8s.pod.uptime" = {enabled = true;};
-                "k8s.volume.available" = {enabled = false;};
-                "k8s.volume.capacity" = {enabled = false;};
-                "k8s.volume.inodes" = {enabled = false;};
-                "k8s.volume.inodes.free" = {enabled = false;};
-                "k8s.volume.inodes.used" = {enabled = false;};
+                "container.cpu.time".enabled = false;
+                "container.cpu.usage".enabled = true;
+                "container.filesystem.available".enabled = false;
+                "container.filesystem.capacity".enabled = false;
+                "container.filesystem.usage".enabled = true;
+                "container.memory.available".enabled = true;
+                "container.memory.major_page_faults".enabled = true;
+                "container.memory.page_faults".enabled = true;
+                "container.memory.rss".enabled = true;
+                "container.memory.usage".enabled = true;
+                "container.memory.working_set".enabled = true;
+                "container.uptime".enabled = true;
+                "k8s.container.cpu.node.utilization".enabled = true;
+                "k8s.container.cpu_limit_utilization".enabled = true;
+                "k8s.container.cpu_request_utilization".enabled = true;
+                "k8s.container.memory.node.utilization".enabled = true;
+                "k8s.container.memory_limit_utilization".enabled = true;
+                "k8s.container.memory_request_utilization".enabled = true;
+                "k8s.node.cpu.time".enabled = false;
+                "k8s.node.cpu.usage".enabled = false;
+                "k8s.node.filesystem.available".enabled = false;
+                "k8s.node.filesystem.capacity".enabled = false;
+                "k8s.node.filesystem.usage".enabled = false;
+                "k8s.node.memory.available".enabled = false;
+                "k8s.node.memory.major_page_faults".enabled = false;
+                "k8s.node.memory.page_faults".enabled = false;
+                "k8s.node.memory.rss".enabled = false;
+                "k8s.node.memory.usage".enabled = false;
+                "k8s.node.memory.working_set".enabled = false;
+                "k8s.node.network.errors".enabled = false;
+                "k8s.node.network.io".enabled = true;
+                "k8s.node.uptime".enabled = true;
+                "k8s.pod.cpu.node.utilization".enabled = true;
+                "k8s.pod.cpu.time".enabled = false;
+                "k8s.pod.cpu.usage".enabled = true;
+                "k8s.pod.cpu_limit_utilization".enabled = true;
+                "k8s.pod.cpu_request_utilization".enabled = true;
+                "k8s.pod.filesystem.available".enabled = false;
+                "k8s.pod.filesystem.capacity".enabled = false;
+                "k8s.pod.filesystem.usage".enabled = true;
+                "k8s.pod.memory.available".enabled = true;
+                "k8s.pod.memory.major_page_faults".enabled = true;
+                "k8s.pod.memory.node.utilization".enabled = true;
+                "k8s.pod.memory.page_faults".enabled = true;
+                "k8s.pod.memory.rss".enabled = true;
+                "k8s.pod.memory.usage".enabled = true;
+                "k8s.pod.memory.working_set".enabled = true;
+                "k8s.pod.memory_limit_utilization".enabled = true;
+                "k8s.pod.memory_request_utilization".enabled = true;
+                "k8s.pod.network.errors".enabled = true;
+                "k8s.pod.network.io".enabled = true;
+                "k8s.pod.uptime".enabled = true;
+                "k8s.volume.available".enabled = false;
+                "k8s.volume.capacity".enabled = false;
+                "k8s.volume.inodes".enabled = false;
+                "k8s.volume.inodes.free".enabled = false;
+                "k8s.volume.inodes.used".enabled = false;
               };
               node = "\${env:K8S_NODE_NAME}";
             };
             otlp = {
               protocols = {
-                grpc = {endpoint = "\${env:K8S_POD_IP}:4317";};
-                http = {endpoint = "\${env:K8S_POD_IP}:4318";};
+                grpc.endpoint = "\${env:K8S_POD_IP}:4317";
+                http.endpoint = "\${env:K8S_POD_IP}:4318";
               };
             };
           };
@@ -706,7 +598,7 @@
                 ];
                 otel_annotations = true;
               };
-              filter = {node_from_env_var = "K8S_NODE_NAME";};
+              filter.node_from_env_var = "K8S_NODE_NAME";
               passthrough = false;
               pod_association = [
                 {
@@ -813,28 +705,20 @@
         hostNetwork = false;
         hostPID = false;
         resources = {
-          limits = {
-            memory = "500Mi";
-          };
-          requests = {
-            memory = "250Mi";
-          };
+          limits.memory = "500Mi";
+          requests.memory = "250Mi";
         };
         envFrom = [
           {
-            secretRef = {
-              name = "influx-auth";
-            };
+            secretRef.name = "influx-auth";
           }
         ];
         env = [
           {
             name = "K8S_POD_IP";
-            valueFrom = {
-              fieldRef = {
-                apiVersion = "v1";
-                fieldPath = "status.podIP";
-              };
+            valueFrom.fieldRef = {
+              apiVersion = "v1";
+              fieldPath = "status.podIP";
             };
           }
         ];
@@ -898,8 +782,8 @@
             };
             otlp = {
               protocols = {
-                grpc = {endpoint = "\${env:K8S_POD_IP}:4317";};
-                http = {endpoint = "\${env:K8S_POD_IP}:4318";};
+                grpc.endpoint = "\${env:K8S_POD_IP}:4317";
+                http.endpoint = "\${env:K8S_POD_IP}:4318";
               };
             };
           };
