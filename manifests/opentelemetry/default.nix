@@ -1,4 +1,4 @@
-{...}: rec {
+{config, ...}: rec {
   name = "opentelemetry";
   version = "0.106.0";
   namespace = "otel";
@@ -737,6 +737,11 @@
             };
           }
         ];
+        ingress = {
+          type = "ingress";
+          hostname = "otlp.${config.domain}";
+          tls = [{hosts = ["otlp.${config.domain}"];}];
+        };
         config = {
           exporters = {
             debug = {
@@ -827,8 +832,8 @@
                 "openshift.appliedclusterquota.used".enabled = false;
                 "openshift.clusterquota.limit".enabled = false;
                 "openshift.clusterquota.used".enabled = false;
-                "k8s.container.status.reason".enabled = true;
-                "k8s.container.status.state".enabled = true;
+                "k8s.container.status.reason".enabled = false; # bugged as of 0.145
+                "k8s.container.status.state".enabled = false; # bugged as of 0.145
                 "k8s.node.condition".enabled = true;
                 # "k8s.node.allocatable_cpu".enabled = true; # requires cpu in allocatable_type_to_report
                 # "k8s.node.allocatable_memory".enabled = true; # requires memory in allocatable_type_to_report

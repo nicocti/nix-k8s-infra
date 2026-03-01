@@ -32,11 +32,7 @@ This project intentionally does not use Nix flakes (as much as possible). Depend
 ├── config.nix               # Shared configuration (domain, IPs, etc.)
 ├── lib.nix                  # Helm chart pulling and manifest building helpers
 ├── run.nix                  # Runnable bootstrap scripts (setupCA, applyGarageLayout, etc.)
-├── cilium/                  # Cilium CNI configuration
-├── garage/                  # Garage S3 storage configuration and patches
-├── grafana/                 # Grafana dashboard configuration
-├── influxdb/                # InfluxDB 3 configuration
-├── opentelemetry/           # OpenTelemetry collector (daemonset + deployment)
+├── manifests/               # Kubernetes manifests by namespace
 ├── hosts/                   # NixOS host configuration (k3s, disko, etc.)
 ├── installer/               # NixOS SD card installer image for Raspberry Pi
 └── npins/                   # Pinned Nix dependencies
@@ -132,12 +128,13 @@ kubectl apply -f $(nix build -f default.nix --arg pkgs 'import <nixpkgs> {}' man
 
 Once deployed, the following services are exposed via Cilium ingress (where `{domain}` is the value of `domain` in `config.nix`):
 
-| Service   | Hostname                       |
-| --------- | ------------------------------ |
-| Hubble UI | `hubble.{domain}`              |
-| Garage S3 | `s3.{domain}`, `*.s3.{domain}` |
-| InfluxDB  | `influxdb.{domain}`            |
-| Grafana   | `grafana.{domain}`             |
+| Service                 | Hostname                       |
+| ----------------------- | ------------------------------ |
+| Hubble UI               | `hubble.{domain}`              |
+| Garage S3               | `s3.{domain}`, `*.s3.{domain}` |
+| InfluxDB                | `influxdb.{domain}`            |
+| Grafana                 | `grafana.{domain}`             |
+| OpenTelemetry Collector | `otlp.{domain}`                |
 
 ## Reference
 
