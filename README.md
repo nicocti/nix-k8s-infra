@@ -125,8 +125,7 @@ nix run -f run.nix --arg pkgs 'import <nixpkgs> {}' applyGarageLayout
 kubectl apply -f $(nix build -f default.nix --arg pkgs 'import <nixpkgs> {}' manifests.influxdb)
 nix run -f run.nix --arg pkgs 'import <nixpkgs> {}' setupInfluxDB
 kubectl apply -f $(nix build -f default.nix --arg pkgs 'import <nixpkgs> {}' manifests.grafana)
-kubectl apply -f $(nix build -f default.nix --arg pkgs 'import <nixpkgs> {}' manifests.opentelemetry-daemonset)
-kubectl apply -f $(nix build -f default.nix --arg pkgs 'import <nixpkgs> {}' manifests.opentelemetry-deployment)
+kubectl apply -f $(nix build -f default.nix --arg pkgs 'import <nixpkgs> {}' manifests.opentelemetry)
 ```
 
 ### Ingress hostnames

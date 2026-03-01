@@ -4,6 +4,11 @@
 in {
   test = builtins.trace default.outputs.out default;
 
+  setupCA = pkgs.writeShellScriptBin "setupCA" ''
+    ${pkgs.lib.getExe pkgs.minica} -domains '*.${default.conf.domain}'
+    ${kubectl} -n ${default.conf.cilium.namespace} create secret tls default-cert --key=_.${default.conf.domain}/key.pem --cert=_.${default.conf.domain}/cert.pem
+  '';
+
   applyGarageLayout = pkgs.writers.writeNuBin "applyGarageLayout" ''
     def --wrapped garage [...args] {
         ${kubectl} -n ${default.conf.garage.namespace} exec -i -c garage statefulsets/garage -- ./garage ...$args

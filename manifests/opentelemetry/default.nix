@@ -56,7 +56,7 @@
       rules = [
         {
           apiGroups = [""];
-          resources = ["nodes/stats" "nodes/proxy"];
+          resources = ["nodes/stats" "nodes/proxy" "nodes/pods"];
           verbs = ["get"];
         }
         {
@@ -127,6 +127,11 @@
         {
           apiGroups = [""];
           resources = ["events" "namespaces" "namespaces/status" "nodes" "nodes/spec" "pods" "pods/status" "replicationcontrollers" "replicationcontrollers/status" "resourcequotas" "services"];
+          verbs = ["get" "list" "watch"];
+        }
+        {
+          apiGroups = ["discovery.k8s.io"];
+          resources = ["endpointslices"];
           verbs = ["get" "list" "watch"];
         }
         {
@@ -299,90 +304,98 @@
                     "system.cpu.load_average.1m".enabled = true;
                   };
                 };
-              };
-              memory = {
-                metrics = {
+                memory.metrics = {
                   "system.memory.usage".enabled = true;
                   "system.memory.utilization".enabled = true;
                   "system.memory.limit".enabled = true;
                   "system.memory.page_size".enabled = false;
+                  # wait for 0.146: "system.memory.linux.shared".enabled = true;
+                  "system.memory.linux.hugepages.limit".enabled = true;
+                  "system.memory.linux.hugepages.page_size".enabled = true;
+                  "system.memory.linux.hugepages.reserved".enabled = true;
+                  "system.memory.linux.hugepages.surplus".enabled = true;
+                  "system.memory.linux.hugepages.usage".enabled = true;
+                  "system.memory.linux.hugepages.utilization".enabled = true;
                   "system.linux.memory.available".enabled = false;
                   "system.linux.memory.dirty".enabled = false;
                 };
-              };
-              network = {
-                include = {
-                  interfaces = [];
+                network = {
+                  include = {
+                    interfaces = [];
+                  };
+                  metrics = {
+                    "system.network.connections".enabled = false;
+                    "system.network.dropped".enabled = false;
+                    "system.network.errors".enabled = false;
+                    "system.network.io".enabled = false;
+                    "system.network.packets".enabled = false;
+                    "system.network.conntrack.count".enabled = false;
+                    "system.network.conntrack.max".enabled = false;
+                  };
                 };
-                metrics = {
-                  "system.network.connections".enabled = false;
-                  "system.network.dropped".enabled = false;
-                  "system.network.errors".enabled = false;
-                  "system.network.io".enabled = false;
-                  "system.network.packets".enabled = false;
-                  "system.network.conntrack.count".enabled = false;
-                  "system.network.conntrack.max".enabled = false;
-                };
-              };
-              cpu = {
-                metrics = {
+                cpu.metrics = {
                   "system.cpu.time".enabled = true;
                   "system.cpu.logical.count".enabled = true;
                   "system.cpu.physical.count".enabled = true;
                   "system.cpu.utilization".enabled = true;
                   "system.cpu.frequency".enabled = false;
                 };
-              };
-              disk = {
-                include = {
-                  devices = [
-                    "/dev/sda*"
-                    "/dev/mapper*"
-                  ];
-                  match_type = "regexp";
+                disk = {
+                  include = {
+                    devices = [
+                      "sda*"
+                      "dm*"
+                    ];
+                    match_type = "regexp";
+                  };
+                  metrics = {
+                    "system.disk.io".enabled = true;
+                    "system.disk.io_time".enabled = true;
+                    "system.disk.merged".enabled = true;
+                    "system.disk.operation_time".enabled = true;
+                    "system.disk.operations".enabled = true;
+                    "system.disk.pending_operations".enabled = true;
+                    "system.disk.weighted_io_time".enabled = true;
+                  };
                 };
-                metrics = {
-                  "system.disk.io".enabled = true;
-                  "system.disk.io_time".enabled = true;
-                  "system.disk.merged".enabled = true;
-                  "system.disk.operation_time".enabled = true;
-                  "system.disk.operations".enabled = true;
-                  "system.disk.pending_operations".enabled = true;
-                  "system.disk.weighted_io_time".enabled = true;
+                paging.metrics = {
+                  "system.paging.usage".enabled = true;
+                  "system.paging.faults".enabled = true;
+                  "system.paging.operations".enabled = true;
+                  "system.paging.utilization".enabled = true;
                 };
-              };
-              paging.metrics."system.paging.usage".enabled = true;
-              process = {
-                include = {
-                  names = [
-                    "systemd"
-                    "containerd"
-                    "sshd"
-                  ];
-                  match_type = "strict";
-                };
-                mute_process_all_errors = true;
-                mute_process_name_error = true;
-                mute_process_exe_error = true;
-                mute_process_io_error = true;
-                mute_process_user_error = true;
-                mute_process_cgroup_error = true;
-                scrape_process_delay = "15s";
-                metrics = {
-                  "process.cpu.time".enabled = true;
-                  "process.disk.io".enabled = true;
-                  "process.memory.usage".enabled = true;
-                  "process.memory.virtual".enabled = true;
-                  "process.context_switches".enabled = true;
-                  "process.cpu.utilization".enabled = true;
-                  "process.disk.operations".enabled = true;
-                  "process.handles".enabled = true;
-                  "process.memory.utilization".enabled = true;
-                  "process.open_file_descriptors".enabled = true;
-                  "process.paging.faults".enabled = true;
-                  "process.signals_pending".enabled = true;
-                  "process.threads".enabled = true;
-                  "process.uptime".enabled = true;
+                process = {
+                  include = {
+                    names = [
+                      "systemd"
+                      "containerd"
+                      "sshd"
+                    ];
+                    match_type = "strict";
+                  };
+                  mute_process_all_errors = true;
+                  mute_process_name_error = true;
+                  mute_process_exe_error = true;
+                  mute_process_io_error = true;
+                  mute_process_user_error = true;
+                  mute_process_cgroup_error = true;
+                  scrape_process_delay = "15s";
+                  metrics = {
+                    "process.cpu.time".enabled = true;
+                    "process.disk.io".enabled = true;
+                    "process.memory.usage".enabled = true;
+                    "process.memory.virtual".enabled = true;
+                    "process.context_switches".enabled = true;
+                    "process.cpu.utilization".enabled = true;
+                    "process.disk.operations".enabled = true;
+                    "process.handles".enabled = true;
+                    "process.memory.utilization".enabled = true;
+                    "process.open_file_descriptors".enabled = true;
+                    "process.paging.faults".enabled = true;
+                    "process.signals_pending".enabled = true;
+                    "process.threads".enabled = true;
+                    "process.uptime".enabled = true;
+                  };
                 };
               };
             };
@@ -445,11 +458,13 @@
             kubeletstats = {
               auth_type = "serviceAccount";
               collection_interval = "15s";
-              insecure_skip_verify = true;
+              node = "\${env:K8S_NODE_NAME}";
               endpoint = "https://\${env:K8S_NODE_IP}:10250";
+              insecure_skip_verify = true;
               k8s_api_config.auth_type = "serviceAccount";
-              extra_metadata_labels = ["container.id" "k8s.volume.type"];
+              extra_metadata_labels = ["container.id" "k8s.volume.type"]; # WARN: This requires additional API call
               metric_groups = ["node" "pod" "volume" "container"];
+              collect_all_network_interfaces.node = true;
               metrics = {
                 "container.cpu.time".enabled = false;
                 "container.cpu.usage".enabled = true;
@@ -463,12 +478,12 @@
                 "container.memory.usage".enabled = true;
                 "container.memory.working_set".enabled = true;
                 "container.uptime".enabled = true;
-                "k8s.container.cpu.node.utilization".enabled = true;
-                "k8s.container.cpu_limit_utilization".enabled = true;
-                "k8s.container.cpu_request_utilization".enabled = true;
-                "k8s.container.memory.node.utilization".enabled = true;
-                "k8s.container.memory_limit_utilization".enabled = true;
-                "k8s.container.memory_request_utilization".enabled = true;
+                "k8s.container.cpu.node.utilization".enabled = true; # requires additional API call
+                "k8s.container.cpu_limit_utilization".enabled = true; # requires additional API call
+                "k8s.container.cpu_request_utilization".enabled = true; # requires additional API call
+                "k8s.container.memory.node.utilization".enabled = true; # requires additional API call
+                "k8s.container.memory_limit_utilization".enabled = true; # requires additional API call
+                "k8s.container.memory_request_utilization".enabled = true; # requires additional API call
                 "k8s.node.cpu.time".enabled = false;
                 "k8s.node.cpu.usage".enabled = false;
                 "k8s.node.filesystem.available".enabled = false;
@@ -483,33 +498,33 @@
                 "k8s.node.network.errors".enabled = false;
                 "k8s.node.network.io".enabled = true;
                 "k8s.node.uptime".enabled = true;
-                "k8s.pod.cpu.node.utilization".enabled = true;
+                "k8s.pod.cpu.node.utilization".enabled = true; # requires additional API call
                 "k8s.pod.cpu.time".enabled = false;
                 "k8s.pod.cpu.usage".enabled = true;
-                "k8s.pod.cpu_limit_utilization".enabled = true;
-                "k8s.pod.cpu_request_utilization".enabled = true;
+                "k8s.pod.cpu_limit_utilization".enabled = true; # requires additional API call
+                "k8s.pod.cpu_request_utilization".enabled = true; # requires additional API call
                 "k8s.pod.filesystem.available".enabled = false;
                 "k8s.pod.filesystem.capacity".enabled = false;
                 "k8s.pod.filesystem.usage".enabled = true;
                 "k8s.pod.memory.available".enabled = true;
                 "k8s.pod.memory.major_page_faults".enabled = true;
-                "k8s.pod.memory.node.utilization".enabled = true;
                 "k8s.pod.memory.page_faults".enabled = true;
                 "k8s.pod.memory.rss".enabled = true;
                 "k8s.pod.memory.usage".enabled = true;
                 "k8s.pod.memory.working_set".enabled = true;
-                "k8s.pod.memory_limit_utilization".enabled = true;
-                "k8s.pod.memory_request_utilization".enabled = true;
+                "k8s.pod.memory.node.utilization".enabled = true; # requires additional API call
+                "k8s.pod.memory_limit_utilization".enabled = true; # requires additional API call
+                "k8s.pod.memory_request_utilization".enabled = true; # requires additional API call
                 "k8s.pod.network.errors".enabled = true;
                 "k8s.pod.network.io".enabled = true;
                 "k8s.pod.uptime".enabled = true;
+                "k8s.pod.volume.usage".enabled = true;
                 "k8s.volume.available".enabled = false;
                 "k8s.volume.capacity".enabled = false;
                 "k8s.volume.inodes".enabled = false;
                 "k8s.volume.inodes.free".enabled = false;
                 "k8s.volume.inodes.used".enabled = false;
               };
-              node = "\${env:K8S_NODE_NAME}";
             };
             otlp = {
               protocols = {
@@ -765,10 +780,64 @@
           };
           receivers = {
             k8s_cluster = {
-              allocatable_types_to_report = ["cpu" "memory" "storage"];
+              allocatable_types_to_report = ["cpu" "memory" "storage" "ephemeral-storage"];
               auth_type = "serviceAccount";
               collection_interval = "10s";
               node_conditions_to_report = ["Ready" "MemoryPressure" "DiskPressure" "NetworkUnavailable"];
+              metrics = {
+                "k8s.container.cpu_limit".enabled = true;
+                "k8s.container.cpu_request".enabled = true;
+                "k8s.container.ephemeralstorage_limit".enabled = true;
+                "k8s.container.ephemeralstorage_request".enabled = true;
+                "k8s.container.memory_limit".enabled = true;
+                "k8s.container.memory_request".enabled = true;
+                "k8s.container.ready".enabled = true;
+                "k8s.container.restarts".enabled = true;
+                "k8s.container.storage_limit".enabled = true;
+                "k8s.container.storage_request".enabled = true;
+                "k8s.cronjob.active_jobs".enabled = true;
+                "k8s.daemonset.current_scheduled_nodes".enabled = true;
+                "k8s.daemonset.desired_scheduled_nodes".enabled = true;
+                "k8s.daemonset.misscheduled_nodes".enabled = true;
+                "k8s.daemonset.ready_nodes".enabled = true;
+                "k8s.deployment.available".enabled = true;
+                "k8s.deployment.desired".enabled = true;
+                "k8s.hpa.current_replicas".enabled = true;
+                "k8s.hpa.desired_replicas".enabled = true;
+                "k8s.hpa.max_replicas".enabled = true;
+                "k8s.hpa.min_replicas".enabled = true;
+                "k8s.job.active_pods".enabled = true;
+                "k8s.job.desired_successful_pods".enabled = true;
+                "k8s.job.failed_pods".enabled = true;
+                "k8s.job.max_parallel_pods".enabled = true;
+                "k8s.job.successful_pods".enabled = true;
+                "k8s.namespace.phase".enabled = true;
+                "k8s.pod.phase".enabled = true;
+                "k8s.replicaset.available".enabled = true;
+                "k8s.replicaset.desired".enabled = true;
+                "k8s.replication_controller.available".enabled = true;
+                "k8s.replication_controller.desired".enabled = true;
+                "k8s.resource_quota.hard_limit".enabled = true;
+                "k8s.resource_quota.used".enabled = true;
+                "k8s.statefulset.current_pods".enabled = true;
+                "k8s.statefulset.desired_pods".enabled = true;
+                "k8s.statefulset.ready_pods".enabled = true;
+                "k8s.statefulset.updated_pods".enabled = true;
+                "openshift.appliedclusterquota.limit".enabled = false;
+                "openshift.appliedclusterquota.used".enabled = false;
+                "openshift.clusterquota.limit".enabled = false;
+                "openshift.clusterquota.used".enabled = false;
+                "k8s.container.status.reason".enabled = true;
+                "k8s.container.status.state".enabled = true;
+                "k8s.node.condition".enabled = true;
+                # "k8s.node.allocatable_cpu".enabled = true; # requires cpu in allocatable_type_to_report
+                # "k8s.node.allocatable_memory".enabled = true; # requires memory in allocatable_type_to_report
+                # "k8s.node.allocatable_ephemeral_storage".enabled = true; # requires ephemeral-storage in allocatable_type_to_report
+                # "k8s.node.allocatable_pods".enabled = true; # requires pods in allocatable_type_to_report
+                "k8s.pod.status_reason".enabled = true;
+                # "k8s.service.endpoint.count".enabled = true; # requires additional RBAC permissions for endpointslices in the discovery.k8s.io
+                # "k8s.service.load_balancer.ingress.count".enabled = true; # requires additional RBAC permissions for endpointslices in the discovery.k8s.io
+              };
             };
             k8sobjects = {
               objects = [
