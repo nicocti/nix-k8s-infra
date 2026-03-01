@@ -1,6 +1,4 @@
 {
-  ssid ? builtins.getEnv "SSID",
-  pwd ? builtins.getEnv "PASS",
   pkgs,
   lib ? pkgs.lib,
   ...
@@ -11,7 +9,7 @@
   manifestsDir = ./manifests;
 in rec {
   # Raspberry Pi setup:
-  installer = (import ./installer {inherit ssid pwd;}).config.system.build.sdImage;
+  installer = (import ./installer {inherit config;}).config.system.build.sdImage;
   disko = host.config.system.build.diskoScript;
   kernel = host.config.boot.kernelPackages.kernel;
   toplevel = host.config.system.build.toplevel;
